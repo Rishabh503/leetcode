@@ -42,16 +42,46 @@ export default function SubmissionCard({
     );
   };
 
+  const getDifficultyBadge = (difficulty) => {
+    if (!difficulty) return null;
+    const styles = {
+      easy: "text-green-700 bg-green-50 border-green-200",
+      medium: "text-yellow-700 bg-yellow-50 border-yellow-200",
+      hard: "text-red-700 bg-red-50 border-red-200"
+    };
+    return (
+      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${styles[difficulty.toLowerCase()] || "text-gray-500"}`}>
+        {difficulty}
+      </span>
+    );
+  };
+
   // Compact Row View (Dashboard Style)
   if (compact) {
     return (
       <div className="grid grid-cols-12 px-6 py-4 border-b border-gray-50 items-center hover:bg-gray-50 transition-colors group">
          <div className="col-span-6">
             <div className="font-bold text-gray-900">{submission.title}</div>
-            <div className="text-xs text-gray-400 mt-1 flex gap-2">
-               {submission.questionNumber && <span>#{submission.questionNumber}</span>}
-               <span>{submission.titleSlug}</span>
-            </div>
+             <div className="text-xs text-gray-400 mt-1 flex gap-2 flex-wrap items-center">
+                {submission.questionNumber && <span>#{submission.questionNumber}</span>}
+                <span>{submission.titleSlug}</span>
+                
+                {/* Topic Tags */}
+                {submission.topicTags && submission.topicTags.length > 0 && (
+                   <div className="flex gap-1 ml-2">
+                      {submission.topicTags.slice(0, 3).map(tag => (
+                         <span key={tag.slug} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px] whitespace-nowrap">
+                            {tag.name}
+                         </span>
+                      ))}
+                      {submission.topicTags.length > 3 && (
+                         <span className="px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded text-[9px]">
+                            +{submission.topicTags.length - 3}
+                         </span>
+                      )}
+                   </div>
+                )}
+             </div>
          </div>
          <div className="col-span-2">
             {onTypeChange ? (
@@ -69,7 +99,7 @@ export default function SubmissionCard({
             )}
          </div>
          <div className="col-span-2">
-             <span className="text-xs font-bold text-green-600">Easy</span>
+             {getDifficultyBadge(submission.difficulty)}
          </div>
          <div className="col-span-2 text-right opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
              <button 
@@ -96,8 +126,20 @@ export default function SubmissionCard({
     <div className="bg-white rounded-lg border p-4">
       <div className="flex justify-between mb-2">
         <div>
-          <h3 className="text-gray-900">{submission.title}</h3>
+          <h3 className="text-gray-900 flex items-center gap-2">
+             {submission.title}
+             {getDifficultyBadge(submission.difficulty)}
+          </h3>
           <p className="text-sm text-gray-500">{submission.titleSlug}</p>
+          {submission.topicTags && submission.topicTags.length > 0 && (
+             <div className="flex gap-1 mt-1 flex-wrap">
+                {submission.topicTags.slice(0, 3).map(tag => (
+                   <span key={tag.slug} className="px-1.5 py-0.5 bg-gray-50 text-gray-500 border border-gray-100 rounded text-[10px]">
+                      {tag.name}
+                   </span>
+                ))}
+             </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2">
           {getSolveTypeBadge(submission.solveType)}

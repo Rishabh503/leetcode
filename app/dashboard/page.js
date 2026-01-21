@@ -77,6 +77,10 @@ export default function DashboardPage() {
         `https://alfa-leetcode-api.onrender.com/select?titleSlug=${submission.titleSlug}`,
       );
       const data = await res.json();
+      
+      const difficulty = data.difficulty || data.question?.difficulty || null;
+      const topicTags = data.topicTags || data.question?.topicTags || [];
+
       await fetch("/api/submissions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -85,6 +89,8 @@ export default function DashboardPage() {
           questionNumber: data.questionFrontendId,
           questionLink: `https://leetcode.com/problems/${data.titleSlug}`,
           solveType: submission.solveType || "new",
+          difficulty: difficulty,
+          topicTags: topicTags
         }),
       });
       fetchData();
@@ -107,9 +113,9 @@ export default function DashboardPage() {
       const todaysSubmissions = subData.submissions || [];
       setSubmissions(todaysSubmissions);
 
-      // Fetch PENDING reminders (due today or overdue)
-      // Note: We modified the API to accept pendingReminders=true
-      const remResponse = await fetch("/api/submissions?pendingReminders=true");
+      // Fetch PENDING reminders (due today or overdue) - Use end of day for comparison
+      const endOfDay = getEndOfDay();
+      const remResponse = await fetch(`/api/submissions?pendingReminders=true&targetDate=${endOfDay.toISOString()}`);
       const remData = await remResponse.json();
       setReminders(remData.submissions || []);
 

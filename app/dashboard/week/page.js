@@ -18,10 +18,13 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
+  Pie,
+  PieChart,
+  Cell,
   ResponsiveContainer,
-  Legend 
+  Legend
 } from "recharts";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, CheckCircle2, RefreshCw, Clock, Sigma } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, CheckCircle2, RefreshCw, Clock, Sigma, AlertCircle } from "lucide-react";
 import Link from 'next/link';
 
 export default function WeeklyProgressPage() {
@@ -116,14 +119,48 @@ export default function WeeklyProgressPage() {
   const sortedReminders = [...data.reminders].sort((a, b) => new Date(a.reminderDate) - new Date(b.reminderDate));
 
 
+  // --- Difficulty & Tag Stats Calculation ---
+  const calculateDifficulty = (submissions) => {
+    const stats = { Easy: 0, Medium: 0, Hard: 0, Unknown: 0 };
+    let missingMetadata = 0;
+    submissions.forEach(s => {
+       if (s.difficulty) stats[s.difficulty]++;
+       else {
+          stats.Unknown++;
+          missingMetadata++;
+       }
+    });
+    return { data: Object.entries(stats).map(([name, value]) => ({ name, value })), missingMetadata };
+  };
+
+  const calculateTags = (submissions) => {
+     const tagCounts = {};
+     submissions.forEach(s => {
+        if (s.topicTags) {
+           s.topicTags.forEach(tag => {
+              tagCounts[tag.name] = (tagCounts[tag.name] || 0) + 1;
+           });
+        }
+     });
+     // Sort and take top 5
+     return Object.entries(tagCounts)
+       .map(([name, count]) => ({ name, count }))
+       .sort((a, b) => b.count - a.count)
+       .slice(0, 5);
+  };
+
+  const difficultyStats = calculateDifficulty(data.currentWeek);
+  const tagStats = calculateTags(data.currentWeek);
+  const COLORS = { Easy: '#10B981', Medium: '#F59E0B', Hard: '#EF4444', Unknown: '#E5E7EB' };
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Weekly Progress Overview</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Weekly Progress</h1>
           <p className="text-gray-500 mt-1">
-            {format(weekStart, 'MMMM d, yyyy')} — {format(weekEnd, 'MMMM d, yyyy')}
+            {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
           </p>
         </div>
         
@@ -135,108 +172,178 @@ export default function WeeklyProgressPage() {
              <CalendarIcon size={16} />
              {isSameDay(currentDate, new Date()) ? 'Current Week' : 'Selected Week'}
            </div>
-           {/* Only allow next week if not in future? Optional. For now let freely navigate */}
            <button onClick={handleNextWeek} className="p-2 hover:bg-gray-50 rounded-lg text-gray-500">
              <ChevronRight size={20} />
            </button>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <StatCard 
-            title="NEW SOLVED" 
-            value={currentStats.newSolved} 
-            change={getPercentChange(currentStats.newSolved, prevStats.newSolved)}
-            icon={<CheckCircle2 className="text-[#E88C6D]" />}
-            color="orange"
-         />
-         <StatCard 
-            title="OLD SOLVED" 
-            value={currentStats.old} 
-            change={getPercentChange(currentStats.old, prevStats.old)}
-            subLabel="Stable" // Placeholder logic
-            icon={<Clock className="text-gray-500" />}
-            color="gray"
-         />
-         <StatCard 
-            title="REVISED" 
-            value={currentStats.revised} 
-            change={getPercentChange(currentStats.revised, prevStats.revised)}
-            icon={<RefreshCw className="text-blue-500" />}
-            color="blue"
-         />
-         <StatCard 
-            title="TOTAL COUNT" 
-            value={currentStats.total} 
-            change={getPercentChange(currentStats.total, prevStats.total)}
-            icon={<Sigma className="text-purple-500" />}
-            color="purple"
-         />
-      </div>
+       {/* Missing Metadata Warning */}
+       {difficultyStats.missingMetadata > 0 && (
+          <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-center justify-between">
+             <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-full text-orange-600">
+                   <AlertCircle size={20} />
+                </div>
+                <div>
+                   <p className="font-bold text-orange-900">Missing Data Detected</p>
+                   <p className="text-sm text-orange-700">{difficultyStats.missingMetadata} problems in this week don't have difficulty/tag info.</p>
+                </div>
+             </div>
+             <Link href="/dashboard/history" className="px-4 py-2 bg-white text-orange-600 font-bold text-sm rounded-lg shadow-sm hover:bg-orange-50 transition-colors">
+                Go to History & Refresh 🔄
+             </Link>
+          </div>
+       )}
 
-      {/* Chart Section */}
-      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-         <div className="flex justify-between items-center mb-8">
-            <h3 className="text-lg font-bold text-gray-900">Daily Distribution</h3>
-            <div className="flex gap-4 text-xs font-bold">
-               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#E88C6D]"></div> New</div>
-               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#F4E4DE]"></div> Old</div>
-               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FFB74D]"></div> Revised</div>
+      {/* Analytics Rows */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         {/* Left Col: Difficulty & Tags */}
+         <div className="lg:col-span-1 space-y-6">
+            {/* Difficulty Chart */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-[320px]">
+               <h3 className="font-bold text-gray-900 mb-4">Difficulty Distribution</h3>
+               <div className="h-[200px] w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                        <Pie
+                           data={difficultyStats.data}
+                           cx="50%"
+                           cy="50%"
+                           innerRadius={60}
+                           outerRadius={80}
+                           paddingAngle={5}
+                           dataKey="value"
+                        >
+                           {difficultyStats.data.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[entry.name] || COLORS.Unknown} />
+                           ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend verticalAlign="bottom" height={36}/>
+                     </PieChart>
+                  </ResponsiveContainer>
+                  {/* Center Total Text */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[60%] text-center">
+                     <span className="text-3xl font-bold text-gray-900">{currentStats.total}</span>
+                     <p className="text-xs text-gray-400 font-bold uppercase">Solved</p>
+                  </div>
+               </div>
+            </div>
+
+            {/* Top Tags */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+               <h3 className="font-bold text-gray-900 mb-4">Top Topics</h3>
+               <div className="space-y-4">
+                  {tagStats.length === 0 ? (
+                     <p className="text-sm text-gray-400 italic">No tag data available.</p>
+                  ) : (
+                     tagStats.map((tag, idx) => (
+                        <div key={idx} className="space-y-1">
+                           <div className="flex justify-between text-xs font-bold text-gray-600">
+                              <span>{tag.name}</span>
+                              <span>{tag.count}</span>
+                           </div>
+                           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                 className="h-full bg-blue-500 rounded-full" 
+                                 style={{ width: `${(tag.count / currentStats.total) * 100}%` }}
+                              ></div>
+                           </div>
+                        </div>
+                     ))
+                  )}
+               </div>
             </div>
          </div>
-         
-         <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barSize={40}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
-                <Tooltip 
-                  cursor={{fill: '#FFF8E7'}}
-                  contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                />
-                <Bar dataKey="New" stackId="a" fill="#E88C6D" radius={[0, 0, 4, 4]} />
-                <Bar dataKey="Old" stackId="a" fill="#F4E4DE" />
-                <Bar dataKey="Revised" stackId="a" fill="#FFB74D" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+
+         {/* Right Col: Main Graphs & Stats */}
+         <div className="lg:col-span-2 space-y-6">
+            {/* Stat Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               <StatCard 
+                  title="New" 
+                  value={currentStats.newSolved} 
+                  change={getPercentChange(currentStats.newSolved, prevStats.newSolved)}
+                  color="orange"
+                  icon={<CheckCircle2 size={18} />} 
+               />
+               <StatCard 
+                  title="Revised" 
+                  value={currentStats.revised} 
+                  change={getPercentChange(currentStats.revised, prevStats.revised)}
+                  color="blue"
+                  icon={<RefreshCw size={18} />} 
+               />
+               <StatCard 
+                  title="Old" 
+                  value={currentStats.old} 
+                  change={getPercentChange(currentStats.old, prevStats.old)}
+                  color="gray"
+                  icon={<Clock size={18} />} 
+               />
+               <StatCard 
+                  title="Total" 
+                  value={currentStats.total} 
+                  change={getPercentChange(currentStats.total, prevStats.total)}
+                  color="purple"
+                  icon={<Sigma size={18} />} 
+               />
+            </div>
+
+            {/* Daily Distribution Chart */}
+            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-900 mb-6">Daily Activity</h3>
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} barSize={32}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11}} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 11}} />
+                      <Tooltip 
+                        cursor={{fill: '#F9FAFB'}}
+                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      />
+                      <Bar dataKey="New" stackId="a" fill="#E88C6D" radius={[0, 0, 4, 4]} />
+                      <Bar dataKey="Old" stackId="a" fill="#F4E4DE" />
+                      <Bar dataKey="Revised" stackId="a" fill="#FFB74D" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Upcoming Reminders (Compact) */}
+            <div className="bg-[#FFF9F5] rounded-3xl p-6 border border-[#FFE0B2]/30">
+               <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock size={16} className="text-[#E88C6D]" /> Reminders This Week
+               </h3>
+               {sortedReminders.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">No reminders scheduled.</p>
+               ) : (
+                  <div className="space-y-3">
+                     {sortedReminders.slice(0, 3).map(rem => (
+                        <Link 
+                           key={rem._id} 
+                           href={`https://leetcode.com/problems/${rem.titleSlug}`}
+                           target="_blank"
+                           className="flex w-full bg-white p-3 rounded-xl border border-gray-100 hover:shadow-sm transition-all items-center justify-between"
+                        >
+                           <div className="flex-1 min-w-0 pr-4">
+                              <p className="text-sm font-bold text-gray-900 truncate">{rem.title}</p>
+                              <p className="text-xs text-[#E88C6D]">{format(new Date(rem.reminderDate), 'MMM d, yyyy')}</p>
+                           </div>
+                           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${rem.reminderCompleted ? 'bg-green-500' : 'bg-orange-400'}`}></span>
+                        </Link>
+                     ))}
+                     {sortedReminders.length > 3 && (
+                        <Link href="/dashboard/reminders" className="text-xs text-center block text-[#E88C6D] font-bold hover:underline">
+                           + {sortedReminders.length - 3} more
+                        </Link>
+                     )}
+                  </div>
+               )}
+            </div>
          </div>
-      </div>
-
-      {/* Upcoming Reminders Section */}
-      <div className="bg-[#FFF9F5] rounded-3xl p-8 border border-[#FFE0B2]/30">
-        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-           <Clock size={20} className="text-[#E88C6D]" /> Upcoming Reminders This Week
-        </h3>
-
-        {sortedReminders.length === 0 ? (
-           <p className="text-gray-500 italic">No reminders scheduled for this week.</p>
-        ) : (
-           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sortedReminders.map(rem => (
-                 <Link 
-                   key={rem._id} 
-                   href={`https://leetcode.com/problems/${rem.titleSlug}`}
-                   target="_blank"
-                   className="bg-white p-4 rounded-xl border border-gray-100 hover:shadow-md transition-all group"
-                 >
-                    <div className="flex justify-between items-start mb-2">
-                       <span className="text-xs font-bold text-[#E88C6D] bg-[#FFF0EB] px-2 py-1 rounded">
-                          {format(new Date(rem.reminderDate), 'EEE, MMM d')}
-                       </span>
-                       <span className={`w-2 h-2 rounded-full ${rem.reminderCompleted ? 'bg-green-500' : 'bg-orange-400'}`}></span>
-                    </div>
-                    <div className="font-bold text-gray-900 group-hover:text-[#E88C6D] transition-colors truncate">
-                       {rem.title}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                       {rem.reminderCompleted ? 'Completed' : 'Pending'}
-                    </div>
-                 </Link>
-              ))}
-           </div>
-        )}
       </div>
 
     </div>

@@ -45,6 +45,10 @@ export default function HistoryPage() {
         `https://alfa-leetcode-api.onrender.com/select?titleSlug=${submission.titleSlug}`,
       );
       const data = await res.json();
+      
+      const difficulty = data.difficulty || data.question?.difficulty || null;
+      const topicTags = data.topicTags || data.question?.topicTags || [];
+
       await fetch("/api/submissions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -53,6 +57,8 @@ export default function HistoryPage() {
           questionNumber: data.questionFrontendId,
           questionLink: `https://leetcode.com/problems/${data.titleSlug}`,
           solveType: submission.solveType || "new",
+          difficulty: difficulty,
+          topicTags: topicTags
         }),
       });
       fetchData();

@@ -24,9 +24,13 @@ export async function GET(request) {
     
     const query = { userId: user.id };
     
-    // Special mode: Fetch pending reminders (overdue or due now)
+    // Special mode: Fetch pending reminders (overdue or due now/today)
     if (pendingReminders === 'true') {
-      query.reminderDate = { $lte: new Date() };
+      const targetDate = searchParams.get('targetDate');
+      // If targetDate provided (e.g., end of today), use it. Else use current time.
+      const compareDate = targetDate ? new Date(targetDate) : new Date();
+      
+      query.reminderDate = { $lte: compareDate };
       query.reminderCompleted = false;
     }
     // Mode: Reminders (Fetch reminders due in a specific range)
@@ -52,10 +56,32 @@ export async function GET(request) {
       query.solveType = null;
     }
     
-    const submissions = await submissionsCol
-      .find(query)
-      .sort({ timestamp: -1 })
-      .toArray();
+    const submissions = await submissionsCol.aggregate([
+      { $match: query },
+      { $sort: { timestamp: -1 } },
+      {
+        $lookup: {
+          from: "questions",
+          localField: "titleSlug",
+          foreignField: "titleSlug",
+          as: "questionData"
+        }
+      },
+      {
+        $addFields: {
+          difficulty: { 
+            $ifNull: [ "$difficulty", { $arrayElemAt: ["$questionData.difficulty", 0] } ] 
+          },
+          questionNumber: { 
+            $ifNull: [ "$questionNumber", { $arrayElemAt: ["$questionData.questionNumber", 0] } ] 
+          },
+          topicTags: {
+            $ifNull: [ "$topicTags", { $arrayElemAt: ["$questionData.topicTags", 0] } ]
+          }
+        }
+      },
+      { $project: { questionData: 0 } }
+    ]).toArray();
     
     return NextResponse.json({ submissions });
     
@@ -77,7 +103,7 @@ export async function PATCH(request) {
     }
 
     const body = await request.json();
-    const { id, solveType, questionNumber, questionLink, notes, reminderDate } = body;
+    const { id, solveType, questionNumber, questionLink, notes, reminderDate, reminderCompleted, difficulty, topicTags } = body;
     
     if (!id) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -86,16 +112,22 @@ export async function PATCH(request) {
     const submissionsCol = await getSubmissionsCollection();
     const questionsCol = await getQuestionsCollection();
     
-    const updateData = {
-      solveType,
-      notes: notes || null,
-      reminderDate: reminderDate ? new Date(reminderDate) : null,
-      questionLink: questionLink,
-      questionNumber: questionNumber ? parseInt(questionNumber) : undefined
-    };
-
-    // Remove undefined fields
-    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+    const updateData = {};
+    if (solveType !== undefined) updateData.solveType = solveType;
+    if (questionLink !== undefined) updateData.questionLink = questionLink;
+    if (questionNumber !== undefined) updateData.questionNumber = parseInt(questionNumber);
+    if (typeof reminderCompleted === 'boolean') updateData.reminderCompleted = reminderCompleted;
+    
+    // Only update nullable fields if they are explicitly provided in the request
+    // This prevents clearing 'notes' or 'reminderDate' when just refreshing metadata
+    if (notes !== undefined) {
+       updateData.notes = notes;
+    }
+    
+    if (reminderDate !== undefined) {
+       // If null was passed, clear it. If a date string, parse it.
+       updateData.reminderDate = reminderDate ? new Date(reminderDate) : null;
+    }
     
     // Update submission ensuring it belongs to user
     const result = await submissionsCol.updateOne(
@@ -110,13 +142,19 @@ export async function PATCH(request) {
       );
     }
     
-    // Update question number if provided
-    if (questionNumber) {
+    // Update question metadata (number, difficulty, tags) if provided
+    if (questionNumber || difficulty || topicTags) {
       const submission = await submissionsCol.findOne({ _id: new ObjectId(id) });
       if (submission) {
+        const questionUpdate = {};
+        if (questionNumber) questionUpdate.questionNumber = parseInt(questionNumber);
+        if (difficulty) questionUpdate.difficulty = difficulty;
+        if (topicTags) questionUpdate.topicTags = topicTags;
+        questionUpdate.updatedAt = new Date();
+
         await questionsCol.updateOne(
           { titleSlug: submission.titleSlug },
-          { $set: { questionNumber: parseInt(questionNumber) } }
+          { $set: questionUpdate }
         );
       }
     }

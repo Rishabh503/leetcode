@@ -31,11 +31,9 @@ export default function Navbar() {
         </Link>
         
         <div className="flex items-center gap-8">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <MoonIcon />
-          </button>
-          <Link href="#" className="hidden md:block text-sm font-medium text-gray-600 hover:text-gray-900">
-            Docs
+          
+          <Link href="dashboard" className="hidden md:block text-sm font-medium text-gray-600 hover:text-gray-900">
+            Dashboard
           </Link>
           
           <SignedOut>

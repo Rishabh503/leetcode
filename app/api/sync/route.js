@@ -63,6 +63,27 @@ export async function POST() {
         continue; // Skip duplicate
       }
       
+      // Fetch problem details for difficulty if we don't have it cached (or just refresh it)
+      // Fetch problem details for difficulty if we don't have it cached (or just refresh it)
+      let difficulty = null;
+      let topicTags = [];
+      let questionNumber = null;
+
+      try {
+         // We can optimize this by checking if we already have the difficulty in questionsCol, 
+         // but for now, we'll fetch to be sure. Rate limiting might be a concern, but for 20 items it's likely fine.
+         const problemRes = await fetch(`https://alfa-leetcode-api.onrender.com/select?titleSlug=${sub.titleSlug}`);
+         if (problemRes.ok) {
+             const problemData = await problemRes.json();
+             // API structure might vary, handle likely paths
+             difficulty = problemData.difficulty || problemData.question?.difficulty || null;
+             topicTags = problemData.topicTags || problemData.question?.topicTags || [];
+             questionNumber = problemData.questionFrontendId ? parseInt(problemData.questionFrontendId) : null;
+         }
+      } catch (err) {
+         console.error("Failed to fetch difficulty for", sub.titleSlug, err);
+      }
+
       // Check if question exists (shared cache of problem metadata)
       // We upsert purely to ensure we have the title/slug mapping available
       await questionsCol.updateOne(
@@ -70,6 +91,10 @@ export async function POST() {
         { 
           $set: { 
             title: sub.title,
+            difficulty: difficulty, // Store difficulty
+            topicTags: topicTags, // Store topic tags
+            questionNumber: questionNumber,
+            questionLink: `https://leetcode.com/problems/${sub.titleSlug}`,
             updatedAt: new Date()
           },
           $addToSet: { languages: sub.lang } // Generic pool of languages used
@@ -82,23 +107,8 @@ export async function POST() {
         userId: user.id
       }) === 0;
 
-      // Auto-complete any pending reminders for this problem
-      if (!isFirstSolveForUser) {
-          await submissionsCol.updateMany(
-            {
-              userId: user.id,
-              titleSlug: sub.titleSlug,
-              reminderDate: { $lte: timestamp }, // Due before or on this solve time
-              reminderCompleted: false
-            },
-            {
-              $set: { 
-                reminderCompleted: true,
-                completedAt: timestamp 
-              }
-            }
-          );
-      }
+      // Auto-complete logic removed as per user request (reminders must be manually marked)
+      // if (!isFirstSolveForUser) { ... }
 
       // Insert submission
       const submissionDoc = {
@@ -108,6 +118,10 @@ export async function POST() {
         timestamp: timestamp,
         lang: sub.lang,
         solveType: "new",
+        difficulty: difficulty, // Will be enriched from 'questions' collection, but good to have fallback
+        questionNumber: questionNumber,
+        questionLink: `https://leetcode.com/problems/${sub.titleSlug}`,
+        topicTags: topicTags,
         notes: null,
         reminderDate: null,
         reminderCompleted: false,
