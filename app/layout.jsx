@@ -6,10 +6,14 @@ export const metadata = {
   description: 'Track and analyze your LeetCode progress',
 };
 
+import { ClerkProvider } from '@clerk/nextjs'
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className="antialiased">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }

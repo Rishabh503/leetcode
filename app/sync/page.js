@@ -1,15 +1,56 @@
-// app/sync/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import Navbar from '@/components/Navbar';
+import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
+
+// Icons
+const CloudSyncIcon = () => (
+  <svg className="w-16 h-16 text-[#E88C6D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M20 16.2A4.5 4.5 0 0 0 21.45 8 2.5 2.5 0 0 0 17 5.5a8 8 0 0 0-14 3.6A3.6 3.6 0 0 0 6 16.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 11v9" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M16 16l-4 4-4-4" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+);
+
+const ExternalLinkIcon = () => (
+  <svg className="w-4 h-4 text-gray-400 hover:text-[#E88C6D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 3h6v6" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10 14L21 3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 export default function SyncPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const router = useRouter();
+  const { user } = useUser();
+  const [lcUsername, setLcUsername] = useState('Loading...');
+
+  useEffect(() => {
+    // Fetch User Details to get LC Username
+    const fetchUserDetails = async () => {
+       try {
+         const res = await fetch('/api/user');
+         const data = await res.json();
+         if (data.exists) {
+           setLcUsername(data.leetcodeUsername);
+         }
+       } catch (e) {
+         console.error(e);
+       }
+    };
+
+    fetchUserDetails();
+  }, []);
 
   const handleSync = async () => {
     setLoading(true);
@@ -25,13 +66,6 @@ export default function SyncPage() {
 
       if (response.ok) {
         setResult(data);
-        
-        // If new submissions were added, redirect to dashboard after 2 seconds
-        if (data.newSubmissions.length > 0) {
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 2000);
-        }
       } else {
         setError(data.error || 'Failed to sync');
       }
@@ -44,77 +78,147 @@ export default function SyncPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <Link 
-            href="/dashboard"
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
-            ← Back to Dashboard
-          </Link>
-        </div>
+    <div className="min-h-screen bg-[#FFFBF7]">
+      <Navbar />
 
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <h1 className="text-3xl font-bold mb-2">Sync Submissions</h1>
-          <p className="text-gray-600 mb-8">
-            Fetch your latest 20 accepted LeetCode submissions
-          </p>
-
-          <button
-            onClick={handleSync}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
-          >
-            {loading ? 'Syncing...' : 'Sync Now'}
-          </button>
-
-          {error && (
-            <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 font-medium">Error</p>
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          {result && (
-            <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-green-800 font-bold mb-2">✓ Sync Successful</p>
-              <p className="text-green-700">{result.message}</p>
-              
-              {result.newSubmissions.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm text-green-800 font-medium mb-2">
-                    New submissions:
-                  </p>
-                  <ul className="space-y-1">
-                    {result.newSubmissions.slice(0, 5).map((sub, idx) => (
-                      <li key={idx} className="text-sm text-green-700">
-                        • {sub.title} ({sub.lang})
-                      </li>
-                    ))}
-                    {result.newSubmissions.length > 5 && (
-                      <li className="text-sm text-green-700">
-                        ... and {result.newSubmissions.length - 5} more
-                      </li>
-                    )}
-                  </ul>
-                  <p className="text-sm text-green-600 mt-3">
-                    Redirecting to dashboard...
-                  </p>
+      {/* Main Content */}
+      <div className="pt-20">
+        
+        {/* Sync Dashboard Header */}
+        <div className="max-w-6xl mx-auto px-6 py-8">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Sync Dashboard</h1>
+                <div className="flex items-center gap-3">
+                     <div className="text-right">
+                        <div className="text-sm font-bold text-gray-900">{user?.fullName || 'Developer'}</div>
+                        <div className="text-xs text-gray-500">Connected as {lcUsername}</div>
+                     </div>
+                     <div className="w-10 h-10 rounded-full bg-[#E88C6D] text-white flex items-center justify-center font-bold overflow-hidden">
+                        <img src={user?.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                     </div>
                 </div>
-              )}
             </div>
-          )}
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h2 className="font-semibold text-gray-900 mb-2">How it works:</h2>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• Fetches your latest 20 accepted submissions</li>
-              <li>• Detects duplicates automatically</li>
-              <li>• Tracks first solves vs revisions</li>
-              <li>• You can add metadata after syncing</li>
-            </ul>
-          </div>
+            {/* Sync Card */}
+            <div className="bg-[#FFF8E7] rounded-3xl p-12 text-center border border-[#FFE0B2]/50 shadow-sm mb-12">
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                    <CloudSyncIcon />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Update Your Submissions</h2>
+                <p className="text-gray-600 max-w-lg mx-auto mb-8">
+                    Fetch your latest solved problems from LeetCode.
+                </p>
+                <button 
+                    onClick={handleSync}
+                    disabled={loading}
+                    className="bg-[#E88C6D] hover:bg-[#D07050] text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-orange-200/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                >
+                    {loading ? (
+                        <>
+                           <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                           Syncing...
+                        </>
+                    ) : (
+                        'Sync Now'
+                    )}
+                </button>
+                <div className="mt-6 text-xs font-bold text-gray-400 tracking-widest uppercase">
+                    LINKED ACCOUNT: {lcUsername}
+                </div>
+            </div>
+
+            {/* Results Section */}
+            {(result || error) && (
+                <div className="mb-12">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                           <h3 className="text-xl font-bold text-gray-900">New Submissions</h3>
+                           <p className="text-sm text-gray-500">Fetched during last sync cycle</p>
+                        </div>
+                        <div className="flex gap-2">
+                             {result?.newSubmissions?.length > 0 && (
+                                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">
+                                    {result.newSubmissions.length} Success
+                                </span>
+                             )}
+                             {error && (
+                                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">
+                                    1 Failure
+                                </span>
+                             )}
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                        
+                        {/* Table Header */}
+                        <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                            <div className="col-span-5">Problem Name</div>
+                            <div className="col-span-2">Solve Type</div>
+                            <div className="col-span-2">Status</div>
+                            <div className="col-span-2">Time Fetched</div>
+                            <div className="col-span-1 text-right">Action</div>
+                        </div>
+
+                        {/* Error State */}
+                        {error && (
+                            <div className="p-8 text-center text-red-600 bg-red-50">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Empty State */}
+                        {result && result.newSubmissions.length === 0 && !error && (
+                            <div className="p-12 text-center text-gray-500">
+                                No new submissions found since last sync.
+                            </div>
+                        )}
+
+                        {/* List Items */}
+                        {result?.newSubmissions?.map((sub, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-4 px-6 py-5 border-b border-gray-50 items-center hover:bg-gray-50 transition-colors">
+                                <div className="col-span-5">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                            // Simple heuristic for difficulty color based on nothing but aesthetics for now since we don't have it
+                                            idx % 3 === 0 ? 'bg-green-100 text-green-700' :
+                                            idx % 3 === 1 ? 'bg-yellow-100 text-yellow-700' : 
+                                            'bg-red-100 text-red-700'
+                                        }`}>
+                                            {sub.title.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-gray-900 text-sm">{sub.title}</div>
+                                            <div className="text-xs text-gray-500">{sub.titleSlug}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-span-2">
+                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                                        sub.isFirstSolve ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                                    }`}>
+                                        {sub.isFirstSolve ? 'New Problem' : 'Revision'}
+                                    </span>
+                                </div>
+                                <div className="col-span-2 flex items-center gap-2">
+                                    <CheckCircleIcon />
+                                    <span className="text-sm font-medium text-green-700">Accepted</span>
+                                </div>
+                                <div className="col-span-2 text-sm text-gray-500">
+                                    Just now
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                    <Link href={`/dashboard`} target="_blank">
+                                       <ExternalLinkIcon />
+                                    </Link>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
         </div>
       </div>
     </div>

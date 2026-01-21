@@ -3,28 +3,95 @@
 
 import { formatDate } from "@/lib/utils";
 
+// Icon components for compactness
+const RefreshIcon = () => (
+   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 2v6h-6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M3 22v-6h6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" strokeLinecap="round" strokeLinejoin="round"/>
+   </svg>
+);
+
+const BellIcon = () => (
+   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round"/>
+     <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round"/>
+   </svg>
+);
+
 export default function SubmissionCard({
   submission,
   onRefresh,
   onQuickReminder,
+  onTypeChange,
+  compact = false
 }) {
-  console.log(onRefresh, onQuickReminder, submission);
   const getSolveTypeBadge = (type) => {
     const styles = {
-      new: "bg-green-100 text-green-800",
-      revision: "bg-blue-100 text-blue-800",
-      practice: "bg-purple-100 text-purple-800",
+      new: "bg-blue-100 text-blue-700 font-bold uppercase",
+      revision: "bg-[#FFF3E0] text-[#E65100] font-bold uppercase",
+      practice: "bg-purple-100 text-purple-700 font-bold uppercase",
+      old: "bg-gray-100 text-gray-600 font-bold uppercase",
     };
 
     return (
-      <span
-        className={`px-2 py-1 rounded text-xs ${styles[type] || "bg-gray-100 text-gray-800"}`}
-      >
-        {type || "Pending"}
-      </span>
+      <div className={`inline-flex px-3 py-1 rounded text-[10px] tracking-wide ${styles[type] || styles.new}`}>
+        {type || "NEW"}
+      </div>
     );
   };
 
+  // Compact Row View (Dashboard Style)
+  if (compact) {
+    return (
+      <div className="grid grid-cols-12 px-6 py-4 border-b border-gray-50 items-center hover:bg-gray-50 transition-colors group">
+         <div className="col-span-6">
+            <div className="font-bold text-gray-900">{submission.title}</div>
+            <div className="text-xs text-gray-400 mt-1 flex gap-2">
+               {submission.questionNumber && <span>#{submission.questionNumber}</span>}
+               <span>{submission.titleSlug}</span>
+            </div>
+         </div>
+         <div className="col-span-2">
+            {onTypeChange ? (
+               <select 
+                 value={submission.solveType || "new"}
+                 onChange={(e) => onTypeChange(submission, e.target.value)}
+                 className="bg-gray-50 border-none text-[10px] font-bold uppercase text-gray-500 hover:bg-gray-100 rounded px-2 py-1 cursor-pointer focus:ring-0"
+               >
+                 <option value="new">NEW</option>
+                 <option value="revision">REVISION</option>
+                 <option value="practice">PRACTICE</option>
+               </select>
+            ) : (
+               getSolveTypeBadge(submission.solveType)
+            )}
+         </div>
+         <div className="col-span-2">
+             <span className="text-xs font-bold text-green-600">Easy</span>
+         </div>
+         <div className="col-span-2 text-right opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-2">
+             <button 
+               onClick={() => onRefresh(submission)}
+               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+               title="Refresh Question Data"
+             >
+               <RefreshIcon />
+             </button>
+             <button 
+               onClick={() => onQuickReminder(submission)}
+               className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
+               title="Set Reminder"
+             >
+               <BellIcon />
+             </button>
+         </div>
+      </div>
+    );
+  }
+
+  // Card View (Original)
   return (
     <div className="bg-white rounded-lg border p-4">
       <div className="flex justify-between mb-2">
@@ -32,7 +99,21 @@ export default function SubmissionCard({
           <h3 className="text-gray-900">{submission.title}</h3>
           <p className="text-sm text-gray-500">{submission.titleSlug}</p>
         </div>
-        {getSolveTypeBadge(submission.solveType)}
+        <div className="flex flex-col items-end gap-2">
+          {getSolveTypeBadge(submission.solveType)}
+          {onTypeChange && (
+            <select
+              value={submission.solveType || "new"}
+              onChange={(e) => onTypeChange(submission, e.target.value)}
+              className="text-xs border rounded p-1 bg-white"
+            >
+              <option value="new">New</option>
+              <option value="old">Old</option>
+              <option value="revision">Revision</option>
+              <option value="practice">Practice</option>
+            </select>
+          )}
+        </div>
       </div>
 
       <div className="text-sm text-gray-600 mb-3">
@@ -49,14 +130,14 @@ export default function SubmissionCard({
       <div className="flex gap-3">
         <button
           onClick={() => onRefresh(submission)}
-          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded"
+          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
         >
           🔄 Refresh
         </button>
 
         <button
           onClick={() => onQuickReminder(submission)}
-          className="px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded"
+          className="px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
         >
           ⏰ Reminder
         </button>

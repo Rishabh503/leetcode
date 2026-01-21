@@ -17,6 +17,23 @@ export default function MonthlyDashboard() {
     setReminderSubmission(submission);
   };
 
+  const updateSolveType = async (submission, newType) => {
+    try {
+      await fetch("/api/submissions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: submission._id,
+          solveType: newType,
+        }),
+      });
+
+      fetchData();
+    } catch (e) {
+      alert("Failed to update status");
+    }
+  };
+
   const refreshQuestion = async (submission) => {
     try {
       const res = await fetch(
@@ -165,6 +182,7 @@ export default function MonthlyDashboard() {
                             submission={sub}
                             onRefresh={refreshQuestion}
                             onQuickReminder={openReminderForm}
+                            onTypeChange={updateSolveType}
                           />
                         ))}
                       </div>
