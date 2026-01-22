@@ -273,19 +273,19 @@ export default function TodayPage() {
                             {sub.title}
                          </div>
                          <div className="text-[10px] text-gray-400 mt-1 flex gap-2">
-                            {sub.topicTags && sub.topicTags.slice(0, 3).map(tag => (
-                               <span key={tag.slug}>{tag.name}</span>
-                            )).reduce((prev, curr) => [prev, ', ', curr])}
+                            {sub.topicTags?.slice(0, 3).map((tag, i) => (
+                               <span key={tag.slug}>{tag.name}{i < Math.min(sub.topicTags.length, 3) - 1 ? ', ' : ''}</span>
+                            ))}
                          </div>
                       </div>
 
                       {/* Solve Type Col */}
                       <div className="col-span-3 flex justify-center">
-                         <div className="relative group/select w-24">
+                         <div className="relative group/select w-20">
                              <select 
                                value={sub.solveType || "new"}
                                onChange={(e) => updateSolveType(sub, e.target.value)}
-                               className="appearance-none bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2] text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg cursor-pointer text-center w-full transition-all focus:outline-none focus:ring-2 focus:ring-orange-200 border border-transparent hover:border-orange-200"
+                               className="appearance-none bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2] text-[10px] font-bold uppercase py-1 rounded-lg cursor-pointer text-center w-full transition-all focus:outline-none focus:ring-2 focus:ring-orange-200 border border-transparent hover:border-orange-200"
                              >
                                <option value="new">NEW</option>
                                <option value="revision">REVISION</option>

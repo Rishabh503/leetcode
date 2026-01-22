@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUsersCollection } from '@/lib/mongodb';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser, clerkClient } from '@clerk/nextjs/server';
 
 export async function POST(request) {
   try {
@@ -36,6 +36,14 @@ export async function POST(request) {
       },
       { upsert: true }
     );
+
+    // Update Clerk Metadata to mark as onboarded
+    const client = await clerkClient();
+    await client.users.updateUserMetadata(user.id, {
+      publicMetadata: {
+        onboarded: true,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

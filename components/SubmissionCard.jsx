@@ -85,11 +85,11 @@ export default function SubmissionCard({
          </div>
          <div className="col-span-2">
             {onTypeChange ? (
-               <div className="relative group/select">
+               <div className="relative group/select w-20">
                  <select 
                    value={submission.solveType || "new"}
                    onChange={(e) => onTypeChange(submission, e.target.value)}
-                   className="appearance-none bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2] text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg cursor-pointer text-center w-full transition-all focus:outline-none focus:ring-2 focus:ring-orange-200 border border-transparent hover:border-orange-200"
+                   className="appearance-none bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2] text-[10px] font-bold uppercase px-2 py-1 rounded-lg cursor-pointer text-center w-full transition-all focus:outline-none focus:ring-2 focus:ring-orange-200 border border-transparent hover:border-orange-200"
                  >
                    <option value="new">NEW</option>
                    <option value="revision">REVISION</option>
