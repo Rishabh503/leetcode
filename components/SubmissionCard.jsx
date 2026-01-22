@@ -85,15 +85,17 @@ export default function SubmissionCard({
          </div>
          <div className="col-span-2">
             {onTypeChange ? (
-               <select 
-                 value={submission.solveType || "new"}
-                 onChange={(e) => onTypeChange(submission, e.target.value)}
-                 className="bg-gray-50 border-none text-[10px] font-bold uppercase text-gray-500 hover:bg-gray-100 rounded px-2 py-1 cursor-pointer focus:ring-0"
-               >
-                 <option value="new">NEW</option>
-                 <option value="revision">REVISION</option>
-                 <option value="practice">PRACTICE</option>
-               </select>
+               <div className="relative group/select">
+                 <select 
+                   value={submission.solveType || "new"}
+                   onChange={(e) => onTypeChange(submission, e.target.value)}
+                   className="appearance-none bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2] text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg cursor-pointer text-center w-full transition-all focus:outline-none focus:ring-2 focus:ring-orange-200 border border-transparent hover:border-orange-200"
+                 >
+                   <option value="new">NEW</option>
+                   <option value="revision">REVISION</option>
+                   <option value="practice">PRACTICE</option>
+                 </select>
+               </div>
             ) : (
                getSolveTypeBadge(submission.solveType)
             )}

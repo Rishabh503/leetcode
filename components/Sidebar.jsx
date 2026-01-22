@@ -10,7 +10,8 @@ import {
   History, 
   Bell, 
   ChevronLeft, 
-  ChevronRight 
+  ChevronRight,
+  Target
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -19,6 +20,7 @@ const Sidebar = () => {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Today', href: '/dashboard/today', icon: Target },
     { name: 'Week', href: '/dashboard/week', icon: CalendarDays },
     { name: 'Month', href: '/dashboard/month', icon: Calendar },
     { name: 'History', href: '/dashboard/history', icon: History },
@@ -27,17 +29,13 @@ const Sidebar = () => {
 
   return (
     <div 
-      className={`bg-white border-r border-[#F5E6E0] h-[calc(100vh-80px)] sticky top-20 transition-all duration-300 flex flex-col ${
+      className={`bg-white border-r border-[#F5E6E0] h-full sticky top-0 pt-4 transition-all duration-300 flex flex-col ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
-      <div className="flex justify-end p-4">
-        <button 
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1 hover:bg-gray-100 rounded-lg text-gray-500"
-        >
-          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-        </button>
+      <div className="absolute right-[-12px] top-9 bg-white border border-[#F5E6E0] rounded-full p-1.5 cursor-pointer header-toggle z-10 hover:bg-gray-50 shadow-sm text-gray-500"
+           onClick={() => setCollapsed(!collapsed)}>
+           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </div>
 
       <div className="flex flex-col gap-2 px-3">

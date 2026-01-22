@@ -61,7 +61,8 @@ export async function GET() {
 
     return NextResponse.json({ 
       exists: true, 
-      leetcodeUsername: dbUser.leetcodeUsername 
+      leetcodeUsername: dbUser.leetcodeUsername,
+      stats: dbUser.leetcodeStats || null 
     });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

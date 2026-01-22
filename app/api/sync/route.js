@@ -20,6 +20,22 @@ export async function POST() {
 
     // Fetch from LeetCode API
     console.log(dbUser)
+
+    // 1. Fetch & Update Global Stats (for Dashboard Overview)
+    try {
+      const statsRes = await fetch(`https://alfa-leetcode-api.onrender.com/${dbUser.leetcodeUsername}/solved`);
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        await usersCol.updateOne(
+           { _id: dbUser._id },
+           { $set: { leetcodeStats: statsData, lastStatsSync: new Date() } }
+        );
+      }
+    } catch (err) {
+      console.error("Failed to fetch user stats", err);
+    }
+
+    // 2. Fetch Recent AC Submissions (for Tracking)
     const response = await fetch(
       `https://alfa-leetcode-api.onrender.com/${dbUser.leetcodeUsername}/acSubmission?limit=20`
     );

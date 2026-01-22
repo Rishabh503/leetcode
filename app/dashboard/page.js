@@ -1,253 +1,248 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { 
+  Trophy, 
+  Target, 
+  Zap, 
+  Activity, 
+  RefreshCw,
+  Info
+} from "lucide-react";
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip,
+  Legend 
+} from "recharts";
 import Link from "next/link";
-import SubmissionCard from "@/components/SubmissionCard";
-import SubmissionForm from "@/components/SubmissionForm";
-import ReminderForm from '@/components/ReminderForm';
-import { getStartOfDay, getEndOfDay } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
-// Icons
-const StatIcon = ({ type }) => {
-  const styles = {
-    total: "bg-green-100 text-green-600",
-    new: "bg-blue-100 text-blue-600",
-    revision: "bg-orange-100 text-orange-600"
-  };
-  
-  const icons = {
-    total: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M18 20V10" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 20V4" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6 20v-6" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    new: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    revision: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M9 11l3 3L22 4" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    )
-  };
-
-  return (
-    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${styles[type]}`}>
-      {icons[type]}
-    </div>
-  );
-};
-
-export default function DashboardPage() {
-  const [submissions, setSubmissions] = useState([]);
-  const [reminders, setReminders] = useState([]);
+export default function DashboardOverview() {
+  const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [reminderSubmission, setReminderSubmission] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const router = useRouter();
 
-  const openReminderForm = (submission) => {
-    setReminderSubmission(submission);
-  };
-
-  const updateSolveType = async (submission, newType) => {
+  const fetchUserStats = async () => {
     try {
-      await fetch("/api/submissions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: submission._id,
-          solveType: newType,
-        }),
-      });
-      fetchData();
-    } catch (e) {
-      alert("Failed to update status");
-    }
-  };
-
-  const refreshQuestion = async (submission) => {
-    try {
-      const res = await fetch(
-        `https://alfa-leetcode-api.onrender.com/select?titleSlug=${submission.titleSlug}`,
-      );
+      const res = await fetch("/api/user");
       const data = await res.json();
-      
-      const difficulty = data.difficulty || data.question?.difficulty || null;
-      const topicTags = data.topicTags || data.question?.topicTags || [];
-
-      await fetch("/api/submissions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: submission._id,
-          questionNumber: data.questionFrontendId,
-          questionLink: `https://leetcode.com/problems/${data.titleSlug}`,
-          solveType: submission.solveType || "new",
-          difficulty: difficulty,
-          topicTags: topicTags
-        }),
-      });
-      fetchData();
-    } catch (e) {
-      alert("Failed to refresh question");
-    }
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const start = getStartOfDay();
-      const end = getEndOfDay();
-
-      // Fetch today's submissions
-      const subResponse = await fetch(
-        `/api/submissions?startDate=${start.toISOString()}&endDate=${end.toISOString()}`,
-      );
-      const subData = await subResponse.json();
-      const todaysSubmissions = subData.submissions || [];
-      setSubmissions(todaysSubmissions);
-
-      // Fetch PENDING reminders (due today or overdue) - Use end of day for comparison
-      const endOfDay = getEndOfDay();
-      const remResponse = await fetch(`/api/submissions?pendingReminders=true&targetDate=${endOfDay.toISOString()}`);
-      const remData = await remResponse.json();
-      setReminders(remData.submissions || []);
-
+      if (data.exists && data.stats) {
+         setUserStats(data.stats);
+      }
     } catch (error) {
-      console.error("Fetch error:", error);
+       console.error("Failed to fetch user stats", error);
     } finally {
-      setLoading(false);
+       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchUserStats();
   }, []);
 
-  const totalProblems = submissions.length;
-  const newProblems = submissions.filter(s => s.solveType === 'new' || s.isFirstSolve).length;
-  const revisionProblems = submissions.filter(s => s.solveType === 'revision' || (!s.isFirstSolve && s.solveType !== 'new')).length;
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/sync', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || "Sync successful!");
+        fetchUserStats(); // Refresh stats
+      } else {
+        alert(data.error || "Sync failed");
+      }
+    } catch (e) {
+      alert("An error occurred during sync");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const COLORS = { Easy: '#10B981', Medium: '#F59E0B', Hard: '#EF4444' };
+
+  if (loading && !userStats) {
+     return <div className="max-w-6xl mx-auto p-12 text-center text-gray-400">Loading your profile...</div>;
+  }
+
+  const pieData = userStats ? [
+    { name: 'Easy', value: userStats.easySolved },
+    { name: 'Medium', value: userStats.mediumSolved },
+    { name: 'Hard', value: userStats.hardSolved },
+  ] : [];
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Today's Progress</h1>
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+       {/* Header */}
+       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+             <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
+             <p className="text-gray-500 mt-1">Your entire LeetCode journey at a glance.</p>
+          </div>
+          <div className="flex gap-3">
+             <Link href="/dashboard/today" className="px-5 py-2.5 bg-[#E88C6D] text-white font-bold rounded-xl shadow-lg hover:bg-[#D07050] transition-all flex items-center gap-2">
+                 View Today's Plan <Target size={18} />
+             </Link>
+          </div>
+       </div>
 
-      {/* Reminders Banner */}
-      <div className="space-y-4 mb-8">
-        {reminders.length > 0 ? (
-          reminders.map((rem) => (
-             <div key={rem._id} className="bg-[#FFF8E7] border border-[#FFD8CC] rounded-xl p-4 flex justify-between items-center group hover:shadow-sm transition-shadow">
-                <div className="flex items-center gap-3">
-                   <div className="text-[#E65100]">⚠️</div>
-                   <p className="text-[#BF360C] text-sm font-medium">
-                      Reminder: <span className="font-bold">{rem.title}</span> needs revision today.
+       {/* Main Stats Grid */}
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Total Solved - Big Card */}
+          <div className="md:col-span-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-full relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <Trophy size={120} className="text-yellow-500" />
+              </div>
+              <div>
+                 <p className="text-gray-500 font-bold uppercase tracking-wider text-xs">Total Solved</p>
+                 <h2 className="text-5xl font-extrabold text-gray-900 mt-2">{userStats?.solvedProblem || 0}</h2>
+              </div>
+              <div className="mt-4">
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                     <Activity size={12} /> Lifetime Submissions
+                  </p>
+              </div>
+          </div>
+
+          {/* Difficulty Cards */}
+          <StatCard 
+             label="Easy" 
+             value={userStats?.easySolved || 0} 
+             total={userStats?.totalSubmissionNum?.find(i => i.difficulty === 'Easy')?.count || 1}
+             color="green" 
+          />
+          <StatCard 
+             label="Medium" 
+             value={userStats?.mediumSolved || 0} 
+             total={userStats?.totalSubmissionNum?.find(i => i.difficulty === 'Medium')?.count || 1}
+             color="yellow" 
+          />
+          <StatCard 
+             label="Hard" 
+             value={userStats?.hardSolved || 0} 
+             total={userStats?.totalSubmissionNum?.find(i => i.difficulty === 'Hard')?.count || 1}
+             color="red" 
+          />
+       </div>
+
+       {/* Middle Section: Distribution & Sync */}
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* Distribution Chart */}
+          <div className="md:col-span-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
+             <h3 className="font-bold text-gray-900 mb-4 self-start w-full border-b border-gray-50 pb-2">Distribution</h3>
+             <div className="h-[200px] w-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                   <PieChart>
+                      <Pie
+                         data={pieData}
+                         innerRadius={60}
+                         outerRadius={80}
+                         paddingAngle={5}
+                         dataKey="value"
+                      >
+                         {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[entry.name]} />
+                         ))}
+                      </Pie>
+                      <Tooltip 
+                         contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle"/>
+                   </PieChart>
+                </ResponsiveContainer>
+                {/* Center Text */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[65%] text-center pointer-events-none">
+                     <span className="text-2xl font-bold text-gray-900">{userStats?.solvedProblem || 0}</span>
+                </div>
+             </div>
+          </div>
+
+          {/* Sync Center & Info */}
+          <div className="md:col-span-2 space-y-6">
+             
+             {/* Sync Card */}
+             <div className="bg-gradient-to-br from-[#E88C6D] to-[#D07050] text-white p-8 rounded-3xl shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full translate-x-1/3 -translate-y-1/2 blur-3xl"></div>
+                
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                   <div>
+                      <h3 className="text-2xl font-bold mb-2">Sync Your Progress</h3>
+                      <p className="text-orange-50 max-w-md">
+                         Fetch your latest submissions and update your stats. 
+                         Click the button to keep everything up to date.
+                      </p>
+                      
+                      <div className="mt-6 flex items-center gap-2 text-xs bg-white/20 p-2 rounded-lg inline-block backdrop-blur-sm border border-white/20">
+                         <Info size={14} className="text-white" />
+                         <span className="text-white font-medium">Tip: Sync once every 6-12 hours to avoid server load.</span>
+                      </div>
+                   </div>
+
+                   <button 
+                     onClick={handleSync}
+                     disabled={syncing}
+                     className={`px-8 py-4 bg-white text-[#D07050] font-bold rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 ${syncing ? 'opacity-80 cursor-wait' : ''}`}
+                   >
+                      <RefreshCw size={24} className={syncing ? "animate-spin" : ""} />
+                      {syncing ? "Syncing..." : "Sync Now"}
+                   </button>
+                </div>
+             </div>
+
+             {/* Journey Info Block */}
+             <div className="bg-gray-50 border border-gray-200 p-6 rounded-3xl">
+                <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
+                   <Target className="text-gray-400" size={20} />
+                   AlgoSync Journey
+                </h3>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                   Welcome to your personal tracking hub. Please note that due to API limitations, 
+                   <strong> we only track the last 20 Accepted submissions</strong> per sync. 
+                   Think of this app as tracking your journey <em>from the day you joined us</em>.
+                </p>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                   <p className="text-gray-900 font-bold italic text-sm">
+                      "It's not just one day, it's day one."
+                   </p>
+                   <p className="text-xs text-gray-500 mt-1">
+                      Consistent syncing will ensure your history builds up accurately over time.
                    </p>
                 </div>
-                <Link href={`https://leetcode.com/problems/${rem.titleSlug}`} target="_blank" className="text-sm font-bold text-[#E88C6D] hover:text-[#D07050]">
-                   SOLVE NOW
-                </Link>
              </div>
-          ))
-        ) : (
-           <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex justify-between items-center">
-               <div className="flex items-center gap-3">
-                   <div className="text-green-600">✅</div>
-                   <p className="text-green-800 text-sm font-medium">All caught up! No pending revisions for today.</p>
-               </div>
-           </div>
-        )}
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-         {/* Total Problems Card */}
-         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <StatIcon type="total" />
-            <p className="text-gray-500 text-sm font-medium mt-4 mb-1">Total Problems Solved Today</p>
-            <p className="text-4xl font-bold text-gray-900">{totalProblems}</p>
-         </div>
-
-         {/* New Problems Card */}
-         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <StatIcon type="new" />
-            <p className="text-gray-500 text-sm font-medium mt-4 mb-1">New Problems</p>
-            <p className="text-4xl font-bold text-gray-900">{newProblems}</p>
-         </div>
-
-         {/* Revisions Card */}
-         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <StatIcon type="revision" />
-            <p className="text-gray-500 text-sm font-medium mt-4 mb-1">Revisions Done</p>
-            <p className="text-4xl font-bold text-gray-900">{revisionProblems}</p>
-         </div>
-      </div>
-
-      {/* Today's Queue */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-12">
-         <div className="px-6 py-5 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">Today's Queue</h3>
-         </div>
-         
-         {loading ? (
-             <div className="p-12 text-center text-gray-400">Loading...</div>
-         ) : submissions.length === 0 ? (
-             <div className="p-12 text-center text-gray-400">
-                No submissions yet. Time to grind! 
-                <br/>
-                <Link href="/sync" className="text-[#E88C6D] hover:underline font-bold mt-2 inline-block">Sync Now</Link>
-             </div>
-         ) : (
-             <div>
-                {/* Table Header */}
-                <div className="grid grid-cols-12 px-6 py-3 bg-gray-50/50 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                   <div className="col-span-6">Problem</div>
-                   <div className="col-span-2">Solve Type</div>
-                   <div className="col-span-2">Difficulty</div>
-                   <div className="col-span-2 text-right">Actions</div>
-                </div>
-
-                 {/* List */}
-                 {submissions.map((sub, idx) => (
-                    <SubmissionCard 
-                       key={sub._id} 
-                       submission={sub}
-                       onRefresh={refreshQuestion}
-                       onQuickReminder={openReminderForm}
-                       onTypeChange={updateSolveType}
-                       compact={true}
-                    />
-                 ))}
-             </div>
-         )}
-         
-         <div className="bg-gray-50 p-4 text-center border-t border-gray-100">
-            <Link href="/dashboard/history" className="text-sm font-medium text-gray-500 hover:text-gray-900">
-               View All Problems
-            </Link>
-         </div>
-      </div>
-
-      {/* Modals */}
-      {selectedSubmission && (
-        <SubmissionForm
-          submission={selectedSubmission}
-          onClose={() => setSelectedSubmission(null)}
-          onSave={fetchData}
-        />
-      )}
-      {reminderSubmission && (
-        <ReminderForm
-          submission={reminderSubmission}
-          onClose={() => setReminderSubmission(null)}
-          onSave={fetchData}
-        />
-      )}
+          </div>
+       </div>
     </div>
   );
+}
+
+function StatCard({ label, value, total, color }) {
+   const colors = {
+      green: "bg-green-50 text-green-700 border-green-100",
+      yellow: "bg-yellow-50 text-yellow-700 border-yellow-100",
+      red: "bg-red-50 text-red-700 border-red-100"
+   };
+   
+   const percent = Math.round((value / total) * 100) || 0;
+
+   return (
+      <div className={`p-6 rounded-3xl border shadow-sm flex flex-col justify-between ${colors[color]}`}>
+          <div className="flex justify-between items-start">
+             <span className="font-bold uppercase text-[10px] tracking-widest opacity-70">{label}</span>
+             <span className="text-xs font-bold px-2 py-1 bg-white/50 rounded-lg backdrop-blur-sm">{percent}%</span>
+          </div>
+          <div className="mt-4">
+             <h3 className="text-4xl font-extrabold">{value}</h3>
+             <p className="text-xs opacity-70 mt-1">/ {total} Available</p>
+          </div>
+          {/* Progress Bar */}
+          <div className="mt-4 h-1.5 w-full bg-black/5 rounded-full overflow-hidden">
+             <div className="h-full bg-current opacity-50" style={{ width: `${percent}%` }}></div>
+          </div>
+      </div>
+   )
 }
