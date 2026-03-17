@@ -11,7 +11,9 @@ import {
   Bell, 
   ChevronLeft, 
   ChevronRight,
-  Target
+  Target,
+  List,
+  RefreshCw
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -25,8 +27,10 @@ const Sidebar = () => {
     { name: 'Month', href: '/dashboard/month', icon: Calendar },
     { name: 'History', href: '/dashboard/history', icon: History },
     { name: 'Reminders', href: '/dashboard/reminders', icon: Bell },
+    { name: 'Sync', href: '/sync', icon: RefreshCw },
+    { name: 'Lists', href: '/dashboard/lists', icon: List },
   ];
-
+  
   return (
     <div 
       className={`bg-white border-r border-[#F5E6E0] h-full sticky top-0 pt-4 transition-all duration-300 flex flex-col ${
