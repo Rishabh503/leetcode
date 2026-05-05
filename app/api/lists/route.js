@@ -30,7 +30,7 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const { title } = body;
+    const { title, groupId } = body;
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -40,6 +40,7 @@ export async function POST(req) {
     const newList = {
       userId: user.id,
       title,
+      groupId: groupId || null,
       questions: [],
       createdAt: new Date(),
       updatedAt: new Date(),

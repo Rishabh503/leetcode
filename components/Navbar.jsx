@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 const LogoIcon = () => (
@@ -22,6 +25,15 @@ const MoonIcon = () => (
   );
 
 export default function Navbar() {
+  const pathname = usePathname();
+
+  const navLinks = [
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Today', href: '/dashboard/today' },
+    { name: 'Lists', href: '/dashboard/lists' },
+    { name: 'Sync', href: '/sync' },
+  ];
+
   return (
     <nav className="fixed w-full z-50 bg-[#FFFBF7]/80 backdrop-blur-md border-b border-[#F5E6E0]">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -32,9 +44,27 @@ export default function Navbar() {
         
         <div className="flex items-center gap-8">
           
-          <Link href="dashboard" className="hidden md:block text-sm font-medium text-gray-600 hover:text-gray-900">
-            Dashboard
-          </Link>
+          <div className="hidden md:flex items-center gap-6 bg-white/50 px-4 py-1.5 rounded-full border border-[#F5E6E0] shadow-sm">
+            {navLinks.map((link) => {
+              const isActive = link.href === '/dashboard' 
+                ? pathname === '/dashboard' 
+                : pathname?.startsWith(link.href);
+              
+              return (
+                <Link 
+                  key={link.name}
+                  href={link.href} 
+                  className={`text-sm transition-all px-2 py-1 rounded-md ${
+                    isActive 
+                      ? 'text-[#E88C6D] font-bold' 
+                      : 'text-gray-600 font-medium hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
+          </div>
           
           <SignedOut>
             <SignInButton mode="modal">

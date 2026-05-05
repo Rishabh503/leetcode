@@ -297,6 +297,7 @@ export default function ListDetailsPage() {
       <div className="bg-white p-5 rounded-xl border border-[#F5E6E0] shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">{list.title}</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">{listQuestions.length} questions in this list</p>
         </div>
         
         <button

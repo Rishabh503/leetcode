@@ -45,11 +45,12 @@ export async function PUT(req, { params }) {
     }
 
     const body = await req.json();
-    const { title, questions } = body;
+    const { title, questions, groupId } = body;
 
     const updateData = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
     if (questions !== undefined) updateData.questions = questions;
+    if (groupId !== undefined) updateData.groupId = groupId;
 
     const listsCol = await getListsCollection();
     const result = await listsCol.findOneAndUpdate(

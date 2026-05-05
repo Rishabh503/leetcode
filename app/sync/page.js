@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Navbar from '@/components/Navbar';
+import Sidebar from '@/components/Sidebar';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -107,14 +108,14 @@ export default function SyncPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFBF7]">
+    <div className="min-h-screen bg-[#FFFBF7] overflow-hidden">
       <Navbar />
-
-      {/* Main Content */}
-      <div className="pt-20">
-        
-        {/* Sync Dashboard Header */}
-        <div className="max-w-6xl mx-auto px-6 py-8">
+      
+      <div className="flex pt-[72px] h-screen overflow-hidden">
+         <Sidebar />
+         
+         <main className="flex-1 overflow-y-auto h-[calc(100vh-72px)] p-8">
+            <div className="max-w-6xl mx-auto">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Sync Dashboard</h1>
                 <div className="flex items-center gap-3">
@@ -286,6 +287,7 @@ export default function SyncPage() {
             )}
 
         </div>
+         </main>
       </div>
     </div>
   );
